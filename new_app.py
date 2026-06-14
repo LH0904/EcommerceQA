@@ -3,7 +3,11 @@ import ssl
 import certifi
 # 修复 Windows SSL 证书加载问题
 os.environ['SSL_CERT_FILE'] = certifi.where()
-ssl._create_default_https_context = lambda: ssl.create_default_context(cafile=certifi.where())
+_original_create_default_context = ssl.create_default_context
+def _patched_create_default_context(*args, **kwargs):
+    kwargs.setdefault('cafile', certifi.where())
+    return _original_create_default_context(*args, **kwargs)
+ssl.create_default_context = _patched_create_default_context
 
 import json
 import hashlib
