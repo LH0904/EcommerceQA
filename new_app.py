@@ -393,13 +393,13 @@ async def delete_user(user_id: int, current_user: dict = Depends(require_admin))
 
 
 @app.get("/presets")
-async def get_presets():
+async def get_presets(current_user: dict = Depends(get_current_user)):
     """Return preset question templates"""
     return {"presets": PRESET_QUESTIONS}
 
 
 @app.get("/history")
-async def get_history(limit: int = 20):
+async def get_history(limit: int = 20, current_user: dict = Depends(get_current_user)):
     """Return recent query history"""
     sql = """
     SELECT id, question, sql_query, time_cost, category, cached, created_at
@@ -435,7 +435,8 @@ async def get_history(limit: int = 20):
 @app.post("/query")
 async def query(
     user_question: str = Form(...),
-    context: str = Form(default="[]")
+    context: str = Form(default="[]"),
+    current_user: dict = Depends(get_current_user),
 ):
     """API endpoint: natural language question -> SQL + dashboard"""
     start_time = time.time()
@@ -529,7 +530,7 @@ async def query(
 
 
 @app.post("/report")
-async def report(user_question: str = Form(...)):
+async def report(user_question: str = Form(...), current_user: dict = Depends(get_current_user)):
     """API endpoint: generate detailed analysis report"""
     start_time = time.time()
 
@@ -579,7 +580,7 @@ async def health():
 
 
 @app.get("/download")
-async def download_file(path: str):
+async def download_file(path: str, current_user: dict = Depends(get_current_user)):
     """Download a generated file"""
     if os.path.exists(path):
         return FileResponse(path)
