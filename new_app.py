@@ -466,7 +466,7 @@ async def query(
         cached = query_cache[cache_key]
         elapsed = time.time() - start_time
         save_to_history(user_question, cached['sql'], cached['result'],
-                        cached['time_cost'], get_category(user_question), cached=True)
+                        cached.get('time', ''), get_category(user_question), cached=True)
         logging.info(f"Cache hit: {user_question}")
         return {**cached, "cached": True, "time": f"{elapsed:.2f}s"}
 

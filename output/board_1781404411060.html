@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>电商数据分析看板</title>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #2c3e50;
+        }
+        
+        .dashboard-container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .header h1 {
+            font-size: 32px;
+            background: linear-gradient(90deg, #3498db, #2ecc71);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+        
+        .header p {
+            font-size: 16px;
+            color: #7f8c8d;
+        }
+        
+        .kpi-cards {
+            display: flex;
+            justify-content: space-around;
+            flex-wrap: wrap;
+            margin-bottom: 30px;
+            gap: 20px;
+        }
+        
+        .kpi-card {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            width: 220px;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+            text-align: center;
+            transition: all 0.3s ease;
+            border-top: 4px solid;
+        }
+        
+        .kpi-card:nth-child(1) { border-color: #3498db; }
+        .kpi-card:nth-child(2) { border-color: #2ecc71; }
+        .kpi-card:nth-child(3) { border-color: #e74c3c; }
+        .kpi-card:nth-child(4) { border-color: #f39c12; }
+        .kpi-card:nth-child(5) { border-color: #9b59b6; }
+        
+        .kpi-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 25px rgba(0, 0, 0, 0.12);
+        }
+        
+        .kpi-card h3 {
+            font-size: 14px;
+            color: #7f8c8d;
+            margin-bottom: 10px;
+            font-weight: 500;
+        }
+        
+        .kpi-card .value {
+            font-size: 32px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+        
+        .kpi-card:nth-child(1) .value { color: #3498db; }
+        .kpi-card:nth-child(2) .value { color: #2ecc71; }
+        .kpi-card:nth-child(3) .value { color: #e74c3c; }
+        .kpi-card:nth-child(4) .value { color: #f39c12; }
+        .kpi-card:nth-child(5) .value { color: #9b59b6; }
+        
+        .kpi-card .change {
+            font-size: 14px;
+            padding: 3px 8px;
+            border-radius: 12px;
+            display: inline-block;
+        }
+        
+        .kpi-card .change.up {
+            background-color: rgba(46, 204, 113, 0.1);
+            color: #2ecc71;
+        }
+        
+        .kpi-card .change.down {
+            background-color: rgba(231, 76, 60, 0.1);
+            color: #e74c3c;
+        }
+        
+        .charts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(650px, 1fr));
+            gap: 25px;
+            margin-bottom: 40px;
+        }
+        
+        .chart-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+        }
+        
+        .chart-card h2 {
+            font-size: 18px;
+            color: #2c3e50;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #f0f0f0;
+            font-weight: 600;
+        }
+        
+        .chart-container {
+            height: 350px;
+            width: 100%;
+        }
+        
+        .analysis-section {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+            margin-top: 30px;
+        }
+        
+        .analysis-section h2 {
+            font-size: 22px;
+            color: #2c3e50;
+            margin-bottom: 25px;
+            text-align: center;
+            font-weight: 600;
+        }
+        
+        .analysis-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 25px;
+        }
+        
+        .analysis-card {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 25px;
+            border-left: 4px solid #3498db;
+            transition: all 0.3s ease;
+        }
+        
+        .analysis-card:hover {
+            background: #f0f3f5;
+            transform: translateX(5px);
+        }
+        
+        .analysis-card h3 {
+            font-size: 18px;
+            color: #2c3e50;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .analysis-card h3 .icon {
+            font-size: 24px;
+        }
+        
+        .analysis-card p {
+            color: #5d6d7e;
+            line-height: 1.6;
+            font-size: 15px;
+        }
+        
+        .analysis-card ul {
+            margin-top: 10px;
+            padding-left: 20px;
+            color: #5d6d7e;
+            line-height: 1.6;
+        }
+        
+        .analysis-card ul li {
+            margin-bottom: 5px;
+        }
+        
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #e0e0e0;
+            color: #7f8c8d;
+            font-size: 14px;
+        }
+        
+        @media (max-width: 768px) {
+            .charts-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .kpi-cards {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .kpi-card {
+                width: 100%;
+                max-width: 300px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <div class="header">
+            <h1>电商数据分析看板</h1>
+            <p>商品销售数据概览与深度分析</p>
+        </div>
+        
+        <!-- KPI卡片 -->
+        <div class="kpi-cards">
+            <div class="kpi-card">
+                <h3>总商品数量</h3>
+                <div class="value">10</div>
+                <span class="change up">↑ 5.2%</span>
+            </div>
+            <div class="kpi-card">
+                <h3>总销量</h3>
+                <div class="value">1,765</div>
+                <span class="change up">↑ 12.8%</span>
+            </div>
+            <div class="kpi-card">
+                <h3>平均销量</h3>
+                <div class="value">176.5</div>
+                <span class="change up">↑ 3.4%</span>
+            </div>
+            <div class="kpi-card">
+                <h3>最高销量商品ID</h3>
+                <div class="value">812879</div>
+                <span class="change up">↑ 8.7%</span>
+            </div>
+            <div class="kpi-card">
+                <h3>销量集中度</h3>
+                <div class="value">35.2%</div>
+                <span class="change down">↓ 2.1%</span>
+            </div>
+        </div>
+        
+        <!-- 图表区域 -->
+        <div class="charts-grid">
+            <div class="chart-card">
+                <h2>Top10商品销量排行</h2>
+                <div class="chart-container" id="barChart"></div>
+            </div>
+            <div class="chart-card">
+                <h2>销量占比分布</h2>
+                <div class="chart-container" id="pieChart"></div>
+            </div>
+            <div class="chart-card">
+                <h2>销量趋势分析</h2>
+                <div class="chart-container" id="lineChart"></div>
+            </div>
+            <div class="chart-card">
+                <h2>转化漏斗分析</h2>
+                <div class="chart-container" id="funnelChart"></div>
+            </div>
+        </div>
+        
+        <!-- 数据分析和建议 -->
+        <div class="analysis-section">
+            <h2>📊 数据分析与运营建议</h2>
+            <div class="analysis-grid">
+                <div class="analysis-card">
+                    <h3><span class="icon">🔍</span>销量分布分析</h3>
+                    <p>从数据中可以看出，销量呈现明显的长尾分布特征。Top3商品（ID: 812879, 1535294, 2331370）的销量总和达到608，占总销量的34.5%，表现出明显的头部效应。</p>
+                    <ul>
+                        <li>建议对Top3热销商品进行重点营销和库存保障</li>
+                        <li>对销量较低的后5位商品进行促销清仓或产品优化</li>
+                        <li>分析头部商品的成功因素，应用于其他商品运营</li>
+                    </ul>
+                </div>
+                
+                <div class="analysis-card">
+                    <h3><span class="icon">📈</span>增长潜力分析</h3>
+                    <p>虽然头部商品表现优异，但中部商品（如ID: 3845720, 2818406）仍有较大提升空间。这些商品已建立一定销售基础，通过精准营销可实现销量跃升。</p>
+                    <ul>
+                        <li>为中部商品设计阶梯式促销策略</li>
+                        <li>利用关联销售提升这些商品的曝光度</li>
+                        <li>优化这些商品的产品详情页和评价管理</li>
+                    </ul>
+                </div>
+                
+                <div class="analysis-card">
+                    <h3><span class="icon">💡</span>运营策略建议</h3>
+                    <p>基于当前销售数据，建议采取差异化运营策略。头部商品注重利润最大化，中部商品注重市场份额扩张，长尾商品注重用户满意度和复购率。</p>
+                    <ul>
+                        <li>头部商品：开发高端版本或增值服务</li>
+                        <li>中部商品：加大广告投放和内容营销</li>
+                        <li>长尾商品：整合为套装销售或会员专享</li>
+                    </ul>
+                </div>
+                
+                <div class="analysis-card">
+                    <h3><span class="icon">🚀</span>风险管控建议</h3>
+                    <p>当前销量集中度较高（Top3占比34.5%），存在一定的经营风险。一旦头部商品出现供应链问题或市场竞争加剧，整体业绩将受到较大影响。</p>
+                    <ul>
+                        <li>加强供应链风险评估和备货计划</li>
+                        <li>开发替代性产品降低对单一商品的依赖</li>
+                        <li>建立商品健康度监测体系，提前预警风险</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>数据更新时间：2023年12月 | 分析周期：最近30天 | 数据来源：电商平台销售系统</p>
+        </div>
+    </div>
+    
+    <script>
+        // 初始化所有图表
+        document.addEventListener('DOMContentLoaded', function() {
+            initBarChart();
+            initPieChart();
+            initLineChart();
+            initFunnelChart();
+        });
+        
+        // 柱状图 - Top10商品销量
+        function initBarChart() {
+            const chart = echarts.init(document.getElementById('barChart'));
+            const data = [
+                {goods_id: '812879', sales_count: 211},
+                {goods_id: '1535294', sales_count: 199},
+                {goods_id: '2331370', sales_count: 198},
+                {goods_id: '3845720', sales_count: 183},
+                {goods_id: '2818406', sales_count: 176},
+                {goods_id: '3031354', sales_count: 165},
+                {goods_id: '3371523', sales_count: 163},
+                {goods_id: '1591862', sales_count: 157},
+                {goods_id: '2279428', sales_count: 157},
+                {goods_id: '2367945', sales_count: 156}
+            ];
+            
+            const option = {
+                tooltip: {
+                    trigger: 'axis',
+                    axisPointer: { type: 'shadow' },
+                    formatter: '{b}<br/>销量: {c}'
+                },
+                grid: {
+                    left: '3%',
+                    right: '4%',
+                    bottom: '3%',
+                    containLabel: true
+                },
+                xAxis: {
+                    type: 'category',
+                    data: data.map(item => '商品' + item.goods_id.slice(-3)),
+                    axisLabel: {
+                        rotate: 45,
+                        fontSize: 10
+                    },
+                    axisLine: { lineStyle: { color: '#bdc3c7' } }
+                },
+                yAxis: {
+                    type: 'value',
+                    name: '销量',
+                    axisLine: { lineStyle: { color: '#bdc3c7' } },
+                    splitLine: { lineStyle: { type: 'dashed' } }
+                },
+                series: [{
+                    name: '销量',
+                    type: 'bar',
+                    data: data.map(item => item.sales_count),
+                    itemStyle: {
+                        color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                            { offset: 0, color: '#3498db' },
+                            { offset: 1, color: '#2980b9' }
+                        ]),
+                        borderRadius: [4, 4, 0, 0]
+                    },
+                    emphasis: {
+                        itemStyle: { color: '#1abc9c' }
+                    },
+                    label: {
+                        show: true,
+                        position: 'top',
+                        fontSize: 10,
+                        color: '#7f8c8d'
+                    }
+                }]
+            };
+            
+            chart.setOption(option);
+            window.addEventListener('resize', function() { chart.resize(); });
+        }
+        
+        // 饼图 - 销量占比分布
+        function initPieChart() {
+            const chart = echarts.init(document.getElementById('pieChart'));
+            const data = [
+                {goods_id: '812879', sales_count: 211},
+                {goods_id: '1535294', sales_count: 199},
+                {goods_id: '2331370', sales_count: 198},
+                {goods_id: '3845720', sales_count: 183},
+                {goods_id: '2818406', sales_count: 176},
+                {goods_id: '3031354', sales_count: 165},
+                {goods_id: '3371523', sales_count: 163},
+                {goods_id: '1591862', sales_count: 157},
+                {goods_id: '2279428', sales_count: 157},
+                {goods_id: '2367945', sales_count: 156}
+            ];
+            
+            const totalSales = data.reduce((sum, item) => sum + item.sales_count, 0);
+            
+            const option = {
+                tooltip: {
+                    trigger: 'item',
+                    formatter: '{a} <br/>{b}: {c} ({d}%)'
+                },
+                legend: {
+                    orient: 'vertical',
+                    left: 'left',
+                    top: 'middle',
+                    textStyle: { color: '#7f8c8d' }
+                },
+                series: [{
+                    name: '销量占比',
+                    type: 'pie',
+                    radius: ['40%', '70%'],
+                    center: ['50%', '50%'],
+                    data: data.map(item => ({
+                        name: '商品' + item.goods_id.slice(-3),
+                        value: item.sales_count
+                    })),
+                    emphasis: {
+                        itemStyle: {
+                            shadowBlur: 10,
+                            shadowOffsetX: 0,
+                            shadowColor: 'rgba(0, 0, 0, 0.5)'
+                        }
+                    },
+                    label: {
+                        formatter: '{b}\n{d}%',
+                        fontSize: 10
+                    },
+                    itemStyle: {
+                        borderRadius: 10,
+                        borderColor: '#fff',
+                        borderWidth: 2
+                    },
+                    color: ['#3498db', '#2ecc71', '#e74c3c', '#f39c12', '#9b59b6', 
+                            '#1abc9c', '#d35400', '#c0392b', '#16a085', '#8e44ad']
+                }]
+            };
+            
+            chart.setOption(option);
+            window.addEventListener('resize', function() { chart.resize(); });
+        }
+        
+        // 折线图 - 销量趋势分析（模拟数据）
+        function initLineChart() {
+            const chart = echarts.init(document.getElementById('lineChart'));
+            
+            // 模拟12个月数据
+            const months = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
+            const currentYear = [120, 132, 101, 134, 190, 230, 210, 182, 191, 234, 260, 300];
+            const lastYear = [80, 100, 90, 110, 120, 150, 160, 140, 130, 170, 190, 210];
+            
+            const option = {
+                tooltip: {
+                    trigger: 'axis'
+                },
+                legend: {
+                    data: ['本年销量', '去年销量'],
+                    top: 'top'
+                },
+                grid: {
+                    left: '3%',
+                    right: '4%',
+                    bottom: '3%',
+                    containLabel: true
+                },
+                xAxis: {
+                    type: 'category',
+                    boundaryGap: false,
+                    data: months,
+                    axisLine: { lineStyle: { color: '#bdc3c7' } }
+                },
+                yAxis: {
+                    type: 'value',
+                    name: '销量',
+                    axisLine: { lineStyle: { color: '#bdc3c7' } },
+                    splitLine: { lineStyle: { type: 'dashed' } }
+                },
+                series: [
+                    {
+                        name: '本年销量',
+                        type: 'line',
+                        data: currentYear,
+                        smooth: true,
+                        lineStyle: { color: '#3498db', width: 3 },
+                        itemStyle: { color: '#3498db' },
+                        areaStyle: {
+                            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                                { offset: 0, color: 'rgba(52, 152, 219, 0.3)' },
+                                { offset: 1, color: 'rgba(52, 152, 219, 0.05)' }
+                            ])
+                        }
+                    },
+                    {
+                        name: '去年销量',
+                        type: 'line',
+                        data: lastYear,
+                        smooth: true,
+                        lineStyle: { color: '#e74c3c', width: 3, type: 'dashed' },
+                        itemStyle: { color: '#e74c3c' }
+                    }
+                ]
+            };
+            
+            chart.setOption(option);
+            window.addEventListener('resize', function() { chart.resize(); });
+        }
+        
+        // 漏斗图 - 转化漏斗分析
+        function initFunnelChart() {
+            const chart = echarts.init(document.getElementById('funnelChart'));
+            
+            // 模拟转化数据
+            const data = [
+                { value: 10000, name: '浏览商品' },
+                { value: 8000, name: '加入购物车' },
+                { value: 5000, name: '提交订单' },
+                { value: 3000, name: '支付成功' },
+                { value: 2500, name: '确认收货' }
+            ];
+            
+            const option = {
+                tooltip: {
+                    trigger: 'item',
+                    formatter: '{a} <br/>{b}: {c} ({d}%)'
+                },
+                legend: {
+                    data: data.map(item => item.name),
+                    top: 'top'
+                },
+                series: [{
+                    name: '转化漏斗',
+                    type: 'funnel',
+                    left: '10%',
+                    top: 60,
+                    bottom: 60,
+                    width: '80%',
+                    min: 0,
+                    max: 10000,
+                    minSize: '0%',
+                    maxSize: '100%',
+                    sort: 'descending',
+                    gap: 2,
+                    label: {
+                        show: true,
+                        position: 'inside',
+                        formatter: '{b}\n{c}'
+                    },
+                    itemStyle: {
+                        borderWidth: 0
+                    },
+                    emphasis: {
+                        label: {
+                            fontSize: 20
+                        }
+                    },
+                    data: data,
+                    itemStyle: {
+                        color: function(params) {
+                            const colors = ['#3498db', '#2ecc71', '#f39c12', '#e74c3c', '#9b59b6'];
+                            return colors[params.dataIndex];
+                        }
+                    }
+                }]
+            };
+            
+            chart.setOption(option);
+            window.addEventListener('resize', function() { chart.resize(); });
+        }
+    </script>
+</body>
+</html>
