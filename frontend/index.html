@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>电商智能问答系统</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f0f2f5; color: #333; }
+        .app-container { display: flex; height: 100vh; }
+
+        /* ===== Sidebar ===== */
+        .sidebar {
+            width: 300px; background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%);
+            color: white; display: flex; flex-direction: column; flex-shrink: 0; overflow: hidden;
+        }
+        .sidebar-header { padding: 20px 20px 0; }
+        .sidebar-header h1 { font-size: 18px; margin-bottom: 4px; }
+        .sidebar-header .subtitle { font-size: 11px; color: #8892b0; margin-bottom: 12px; }
+        .tech-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 16px; }
+        .tech-tag {
+            padding: 2px 8px; background: rgba(100,255,218,0.1); border: 1px solid rgba(100,255,218,0.3);
+            border-radius: 10px; font-size: 10px; color: #64ffda;
+        }
+
+        /* Sidebar scrollable content */
+        .sidebar-body { flex: 1; overflow-y: auto; padding: 0 20px 20px; }
+        .sidebar-body::-webkit-scrollbar { width: 4px; }
+        .sidebar-body::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 2px; }
+
+        .section-title {
+            font-size: 11px; color: #8892b0; text-transform: uppercase;
+            letter-spacing: 1px; margin: 16px 0 8px; display: flex;
+            align-items: center; justify-content: space-between; cursor: pointer;
+            user-select: none;
+        }
+        .section-title .arrow { transition: transform 0.2s; font-size: 10px; }
+        .section-title .arrow.collapsed { transform: rotate(-90deg); }
+
+        /* Preset questions */
+        .preset-category { margin-bottom: 8px; }
+        .preset-cat-label {
+            font-size: 12px; color: #64ffda; padding: 4px 0; cursor: pointer;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .preset-cat-label .badge {
+            background: rgba(100,255,218,0.15); padding: 1px 6px; border-radius: 8px;
+            font-size: 10px; color: #64ffda;
+        }
+        .preset-item {
+            display: block; width: 100%; text-align: left; padding: 6px 10px;
+            margin-bottom: 2px; background: rgba(255,255,255,0.03); border: none;
+            border-radius: 4px; color: #ccd6f6; font-size: 12px; cursor: pointer;
+            transition: all 0.15s; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .preset-item:hover { background: rgba(100,255,218,0.1); color: #64ffda; }
+
+        /* History items */
+        .history-item {
+            padding: 8px 10px; margin-bottom: 4px; background: rgba(255,255,255,0.03);
+            border-radius: 6px; cursor: pointer; transition: all 0.15s;
+        }
+        .history-item:hover { background: rgba(100,255,218,0.08); }
+        .history-item .q { font-size: 12px; color: #ccd6f6; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .history-item .meta { font-size: 10px; color: #5a6a8a; margin-top: 3px; display: flex; gap: 8px; }
+        .history-item .meta .cached-tag { color: #64ffda; }
+        .history-empty { font-size: 12px; color: #5a6a8a; padding: 8px 0; text-align: center; }
+
+        /* ===== Main Area ===== */
+        .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+        .header {
+            padding: 14px 32px; background: white; border-bottom: 1px solid #e8e8e8;
+            display: flex; align-items: center; gap: 12px;
+        }
+        .header .logo { font-size: 22px; }
+        .header h2 { font-size: 16px; font-weight: 600; }
+        .header .badge { padding: 2px 10px; background: #52c41a; color: white; border-radius: 10px; font-size: 11px; }
+        .header .cache-stats {
+            margin-left: auto; font-size: 11px; color: #888;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .header .cache-dot { width: 6px; height: 6px; border-radius: 50%; background: #52c41a; }
+
+        /* Chat area */
+        .chat-area { flex: 1; overflow-y: auto; padding: 24px 32px; }
+        .chat-empty {
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            height: 100%; color: #aaa;
+        }
+        .chat-empty .icon { font-size: 56px; margin-bottom: 16px; }
+        .chat-empty p { font-size: 15px; margin-bottom: 6px; }
+        .chat-empty .hint { font-size: 12px; color: #bbb; }
+
+        /* Quick start grid */
+        .quick-grid {
+            display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;
+            margin-top: 20px; max-width: 500px;
+        }
+        .quick-card {
+            padding: 14px 16px; background: white; border-radius: 10px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.06); cursor: pointer;
+            transition: all 0.2s; border: 1px solid transparent;
+        }
+        .quick-card:hover { border-color: #1890ff; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(24,144,255,0.1); }
+        .quick-card .q-icon { font-size: 20px; margin-bottom: 6px; }
+        .quick-card .q-text { font-size: 13px; color: #333; }
+
+        /* Messages */
+        .message { margin-bottom: 24px; }
+        .message-user { display: flex; justify-content: flex-end; }
+        .message-user .bubble {
+            background: #1890ff; color: white; padding: 10px 16px;
+            border-radius: 12px 12px 0 12px; max-width: 60%; font-size: 14px;
+        }
+        .message-system { display: flex; gap: 12px; }
+        .message-system .avatar {
+            width: 36px; height: 36px; background: #1890ff; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 16px; flex-shrink: 0;
+        }
+        .message-system .content { flex: 1; max-width: 90%; }
+
+        /* Cache badge */
+        .cache-badge {
+            display: inline-block; padding: 2px 8px; background: #f6ffed;
+            border: 1px solid #b7eb8f; border-radius: 4px; font-size: 11px;
+            color: #52c41a; margin-left: 8px; vertical-align: middle;
+        }
+
+        /* Result cards */
+        .result-card {
+            background: white; border-radius: 12px; padding: 16px 20px;
+            margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+        }
+        .result-card .card-title {
+            font-size: 14px; font-weight: 600; color: #1890ff; margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .sql-code {
+            background: #1e1e1e; color: #d4d4d4; padding: 12px 16px; border-radius: 8px;
+            font-family: 'Fira Code', monospace; font-size: 13px; line-height: 1.5;
+            overflow-x: auto; white-space: pre-wrap; word-break: break-all;
+        }
+        .data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        .data-table th {
+            background: #fafafa; padding: 10px 12px; text-align: left;
+            font-weight: 600; border-bottom: 2px solid #e8e8e8; color: #555;
+        }
+        .data-table td { padding: 8px 12px; border-bottom: 1px solid #f0f0f0; }
+        .data-table tr:hover td { background: #f5f7fa; }
+        .dashboard-frame { width: 100%; border: none; border-radius: 8px; min-height: 600px; }
+
+        /* Metrics */
+        .metrics { display: flex; gap: 12px; margin-bottom: 12px; }
+        .metric {
+            flex: 1; background: white; border-radius: 10px; padding: 14px 16px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08); text-align: center;
+        }
+        .metric .value { font-size: 20px; font-weight: 700; color: #1890ff; }
+        .metric .label { font-size: 12px; color: #888; margin-top: 4px; }
+
+        /* Input bar */
+        .input-bar {
+            padding: 16px 32px; background: white; border-top: 1px solid #e8e8e8;
+            display: flex; gap: 12px; align-items: center;
+        }
+        .input-bar input {
+            flex: 1; padding: 12px 16px; border: 1px solid #d9d9d9; border-radius: 8px;
+            font-size: 14px; outline: none; transition: border-color 0.2s;
+        }
+        .input-bar input:focus { border-color: #1890ff; box-shadow: 0 0 0 2px rgba(24,144,255,0.1); }
+        .input-bar button {
+            padding: 12px 24px; background: #1890ff; color: white; border: none;
+            border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer;
+            transition: background 0.2s; display: flex; align-items: center; gap: 6px;
+            white-space: nowrap;
+        }
+        .input-bar button:hover { background: #40a9ff; }
+        .input-bar button:disabled { background: #d9d9d9; cursor: not-allowed; }
+        .clear-btn {
+            padding: 8px 12px; background: transparent; border: 1px solid #d9d9d9;
+            border-radius: 6px; font-size: 12px; color: #888; cursor: pointer;
+            transition: all 0.2s;
+        }
+        .clear-btn:hover { border-color: #ff4d4f; color: #ff4d4f; }
+
+        /* Loading */
+        .loading { display: flex; align-items: center; gap: 8px; padding: 12px 0; color: #888; }
+        .spinner {
+            width: 20px; height: 20px; border: 2px solid #e8e8e8; border-top-color: #1890ff;
+            border-radius: 50%; animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Download buttons */
+        .download-btns { display: flex; gap: 8px; margin-top: 8px; }
+        .dl-btn {
+            padding: 6px 16px; border: 1px solid #d9d9d9; border-radius: 6px;
+            background: white; cursor: pointer; font-size: 13px; transition: all 0.2s;
+            display: flex; align-items: center; gap: 4px; text-decoration: none; color: #333;
+        }
+        .dl-btn:hover { border-color: #1890ff; color: #1890ff; }
+
+        /* Context indicator */
+        .context-indicator {
+            font-size: 11px; color: #888; padding: 4px 0 8px;
+            display: flex; align-items: center; gap: 4px;
+        }
+        .context-indicator .dot { width: 4px; height: 4px; border-radius: 50%; background: #faad14; }
+    </style>
+</head>
+<body>
+<div id="app">
+    <div class="app-container">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <h1>🛒 电商智能问答系统</h1>
+                <div class="subtitle">基于 RAG + NL2SQL 的智能分析平台 v2.0</div>
+                <div class="tech-tags">
+                    <span class="tech-tag">Vue 3</span>
+                    <span class="tech-tag">FastAPI</span>
+                    <span class="tech-tag">MySQL</span>
+                    <span class="tech-tag">ChromaDB</span>
+                    <span class="tech-tag">MiMo</span>
+                    <span class="tech-tag">Echarts</span>
+                </div>
+            </div>
+
+            <div class="sidebar-body">
+                <!-- Preset Questions -->
+                <div class="section-title" @click="showPresets = !showPresets">
+                    <span>📋 预设问题</span>
+                    <span class="arrow" :class="{ collapsed: !showPresets }">▼</span>
+                </div>
+                <div v-show="showPresets">
+                    <div v-for="(questions, cat) in presets" :key="cat" class="preset-category">
+                        <div class="preset-cat-label">
+                            <span>{{ cat }}</span>
+                            <span class="badge">{{ questions.length }}</span>
+                        </div>
+                        <button v-for="q in questions" :key="q" class="preset-item" @click="useExample(q)">
+                            {{ q }}
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Query History -->
+                <div class="section-title" @click="showHistory = !showHistory">
+                    <span>🕐 查询历史</span>
+                    <span class="arrow" :class="{ collapsed: !showHistory }">▼</span>
+                </div>
+                <div v-show="showHistory">
+                    <div v-if="history.length === 0" class="history-empty">暂无查询记录</div>
+                    <div v-for="item in history" :key="item.id" class="history-item" @click="useExample(item.question)">
+                        <div class="q">{{ item.question }}</div>
+                        <div class="meta">
+                            <span>{{ formatTime(item.created_at) }}</span>
+                            <span>{{ item.time_cost }}</span>
+                            <span v-if="item.cached" class="cached-tag">缓存</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main -->
+        <div class="main">
+            <div class="header">
+                <span class="logo">📊</span>
+                <h2>数据查询与分析</h2>
+                <span class="badge">在线</span>
+                <div class="cache-stats">
+                    <span class="cache-dot"></span>
+                    <span>缓存 {{ cacheSize }} 条</span>
+                </div>
+            </div>
+
+            <div class="chat-area" ref="chatArea">
+                <!-- Empty state -->
+                <div v-if="messages.length === 0" class="chat-empty">
+                    <div class="icon">💬</div>
+                    <p>输入问题，开始智能数据分析</p>
+                    <div class="hint">支持多轮对话 · 例如「上个月销量多少」→「那上上个月呢」</div>
+                    <div class="quick-grid">
+                        <div class="quick-card" v-for="ex in quickExamples" :key="ex.text" @click="useExample(ex.text)">
+                            <div class="q-icon">{{ ex.icon }}</div>
+                            <div class="q-text">{{ ex.text }}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Messages -->
+                <div v-for="(msg, idx) in messages" :key="idx">
+                    <!-- User message -->
+                    <div v-if="msg.type === 'user'" class="message message-user">
+                        <div class="bubble">
+                            {{ msg.text }}
+                            <span v-if="msg.contextLen > 0" style="font-size:11px;opacity:0.7;display:block;margin-top:4px;">
+                                🔗 含 {{ msg.contextLen }} 轮上下文
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- System response -->
+                    <div v-if="msg.type === 'system'" class="message message-system">
+                        <div class="avatar">🤖</div>
+                        <div class="content">
+                            <!-- Loading -->
+                            <div v-if="msg.loading" class="loading">
+                                <div class="spinner"></div>
+                                <span>{{ msg.loadingText || '正在分析并生成报告...' }}</span>
+                            </div>
+
+                            <!-- Result -->
+                            <div v-if="msg.result">
+                                <!-- Cache indicator -->
+                                <div v-if="msg.result.cached" class="context-indicator">
+                                    <span class="dot"></span>
+                                    <span>⚡ 缓存命中，结果秒返回</span>
+                                </div>
+
+                                <!-- Metrics -->
+                                <div class="metrics">
+                                    <div class="metric">
+                                        <div class="value">{{ msg.result.time }}</div>
+                                        <div class="label">⏱️ 耗时</div>
+                                    </div>
+                                    <div class="metric">
+                                        <div class="value">{{ msg.result.result ? msg.result.result.length : 0 }}</div>
+                                        <div class="label">📊 返回行数</div>
+                                    </div>
+                                    <div class="metric">
+                                        <div class="value">{{ msg.result.sql ? msg.result.sql.length : 0 }}</div>
+                                        <div class="label">💾 SQL 长度</div>
+                                    </div>
+                                </div>
+
+                                <!-- SQL -->
+                                <div class="result-card">
+                                    <div class="card-title">
+                                        🔍 生成的 SQL
+                                        <span v-if="msg.result.cached" class="cache-badge">缓存</span>
+                                    </div>
+                                    <div class="sql-code">{{ msg.result.sql }}</div>
+                                </div>
+
+                                <!-- Data table -->
+                                <div v-if="msg.result.result && msg.result.result.length" class="result-card">
+                                    <div class="card-title">📋 查询数据</div>
+                                    <div style="overflow-x: auto;">
+                                        <table class="data-table">
+                                            <thead>
+                                                <tr>
+                                                    <th v-for="col in getColumns(msg.result.result)" :key="col">{{ col }}</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr v-for="(row, ri) in msg.result.result" :key="ri">
+                                                    <td v-for="col in getColumns(msg.result.result)" :key="col">{{ row[col] }}</td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+
+                                <!-- Dashboard -->
+                                <div v-if="msg.result.board_html" class="result-card">
+                                    <div class="card-title">📊 数据看板</div>
+                                    <iframe
+                                        :srcdoc="msg.result.board_html"
+                                        class="dashboard-frame"
+                                        sandbox="allow-scripts allow-same-origin"
+                                    ></iframe>
+                                </div>
+
+                                <!-- Downloads -->
+                                <div class="download-btns">
+                                    <a v-if="msg.result.pdf_path" class="dl-btn" :href="'http://localhost:35052/download?path=' + encodeURIComponent(msg.result.pdf_path)" target="_blank">
+                                        📄 下载 PDF
+                                    </a>
+                                    <a v-if="msg.result.html_path" class="dl-btn" :href="'http://localhost:35052/download?path=' + encodeURIComponent(msg.result.html_path)" target="_blank">
+                                        🌐 下载 HTML
+                                    </a>
+                                </div>
+                            </div>
+
+                            <!-- Error -->
+                            <div v-if="msg.error" class="result-card" style="border-left: 4px solid #ff4d4f;">
+                                <div class="card-title" style="color: #ff4d4f;">❌ 查询失败</div>
+                                <div style="color: #666;">{{ msg.error }}</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Input -->
+            <div class="input-bar">
+                <button class="clear-btn" @click="clearChat" v-if="messages.length > 0">🗑️ 清空</button>
+                <input
+                    v-model="input"
+                    @keyup.enter="sendQuery"
+                    placeholder="请输入您的问题，例如：统计各行为类型的数量分布"
+                    :disabled="loading"
+                />
+                <button @click="sendQuery" :disabled="loading || !input.trim()">
+                    <span v-if="!loading">🔍 查询</span>
+                    <span v-else>⏳ 分析中...</span>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+const { createApp, ref, nextTick, onMounted } = Vue;
+
+createApp({
+    setup() {
+        const input = ref('');
+        const loading = ref(false);
+        const messages = ref([]);
+        const chatArea = ref(null);
+        const conversation = ref([]);
+        const history = ref([]);
+        const presets = ref({});
+        const showPresets = ref(true);
+        const showHistory = ref(true);
+        const cacheSize = ref(0);
+
+        const API_BASE = 'http://localhost:35052';
+
+        const quickExamples = [
+            { icon: '📊', text: '统计各行为类型的数量分布' },
+            { icon: '🏆', text: '最受欢迎的前10个商品类别' },
+            { icon: '🏙️', text: '各城市的购买转化率' },
+            { icon: '📈', text: '每天的购买量趋势' },
+        ];
+
+        function getColumns(data) {
+            if (!data || !data.length) return [];
+            return Object.keys(data[0]);
+        }
+
+        function useExample(text) {
+            input.value = text;
+            nextTick(() => sendQuery());
+        }
+
+        function formatTime(ts) {
+            if (!ts) return '';
+            const d = new Date(ts);
+            const now = new Date();
+            const diff = now - d;
+            if (diff < 60000) return '刚刚';
+            if (diff < 3600000) return `${Math.floor(diff / 60000)}分钟前`;
+            if (diff < 86400000) return `${Math.floor(diff / 3600000)}小时前`;
+            return `${d.getMonth() + 1}/${d.getDate()} ${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`;
+        }
+
+        function clearChat() {
+            messages.value = [];
+            conversation.value = [];
+        }
+
+        async function fetchHistory() {
+            try {
+                const resp = await fetch(`${API_BASE}/history?limit=20`);
+                const data = await resp.json();
+                history.value = data.history || [];
+            } catch (e) {
+                console.error('Failed to fetch history:', e);
+            }
+        }
+
+        async function fetchPresets() {
+            try {
+                const resp = await fetch(`${API_BASE}/presets`);
+                const data = await resp.json();
+                presets.value = data.presets || {};
+            } catch (e) {
+                console.error('Failed to fetch presets:', e);
+            }
+        }
+
+        async function sendQuery() {
+            const q = input.value.trim();
+            if (!q || loading.value) return;
+
+            loading.value = true;
+            input.value = '';
+
+            // Track conversation context length
+            const ctxLen = conversation.value.length;
+            messages.value.push({ type: 'user', text: q, contextLen: ctxLen });
+
+            const sysMsg = {
+                type: 'system', loading: true, result: null, error: null,
+                loadingText: ctxLen > 0 ? '正在理解上下文并生成查询...' : '正在分析并生成报告...'
+            };
+            messages.value.push(sysMsg);
+
+            await nextTick();
+            chatArea.value.scrollTop = chatArea.value.scrollHeight;
+
+            try {
+                const formData = new FormData();
+                formData.append('user_question', q);
+                formData.append('context', JSON.stringify(conversation.value.slice(-3)));
+
+                const resp = await fetch(`${API_BASE}/query`, {
+                    method: 'POST',
+                    body: formData,
+                });
+                const data = await resp.json();
+
+                if (data.error) {
+                    sysMsg.error = data.error;
+                } else {
+                    sysMsg.result = data;
+                    // Add to conversation context
+                    conversation.value.push({
+                        question: q,
+                        sql: data.sql,
+                        result: data.result,
+                    });
+                    // Keep only last 5 turns
+                    if (conversation.value.length > 5) {
+                        conversation.value = conversation.value.slice(-5);
+                    }
+                    // Update cache size indicator
+                    cacheSize.value += data.cached ? 0 : 1;
+                }
+
+                // Refresh history
+                fetchHistory();
+            } catch (e) {
+                sysMsg.error = `请求失败：${e.message}`;
+            } finally {
+                sysMsg.loading = false;
+                loading.value = false;
+                await nextTick();
+                chatArea.value.scrollTop = chatArea.value.scrollHeight;
+            }
+        }
+
+        onMounted(() => {
+            fetchPresets();
+            fetchHistory();
+        });
+
+        return {
+            input, loading, messages, chatArea,
+            conversation, history, presets,
+            showPresets, showHistory,
+            quickExamples, cacheSize,
+            getColumns, useExample, sendQuery,
+            formatTime, clearChat,
+        };
+    }
+}).mount('#app');
+</script>
+</body>
+</html>
