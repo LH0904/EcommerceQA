@@ -465,8 +465,11 @@ async def query(
     if cache_key in query_cache:
         cached = query_cache[cache_key]
         elapsed = time.time() - start_time
-        save_to_history(user_question, cached['sql'], cached['result'],
-                        cached.get('time', ''), get_category(user_question), cached=True)
+        import asyncio
+        asyncio.get_event_loop().run_in_executor(
+            None, save_to_history, user_question, cached['sql'], cached['result'],
+            cached.get('time', ''), get_category(user_question), True
+        )
         logging.info(f"Cache hit: {user_question}")
         return {**cached, "cached": True, "time": f"{elapsed:.2f}s"}
 
