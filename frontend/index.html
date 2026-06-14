@@ -11,6 +11,44 @@
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f0f2f5; color: #333; }
         .app-container { display: flex; height: 100vh; }
 
+        /* ===== Login Page ===== */
+        .login-page {
+            display: flex; align-items: center; justify-content: center;
+            height: 100vh; background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+        }
+        .login-card {
+            background: white; border-radius: 16px; padding: 48px 40px;
+            width: 400px; box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        .login-card h1 { text-align: center; font-size: 22px; margin-bottom: 8px; color: #1a1a2e; }
+        .login-card .subtitle { text-align: center; font-size: 13px; color: #888; margin-bottom: 32px; }
+        .login-card .form-group { margin-bottom: 20px; }
+        .login-card label { display: block; font-size: 13px; color: #555; margin-bottom: 6px; font-weight: 500; }
+        .login-card input {
+            width: 100%; padding: 12px 16px; border: 1px solid #d9d9d9; border-radius: 8px;
+            font-size: 14px; outline: none; transition: border-color 0.2s;
+        }
+        .login-card input:focus { border-color: #1890ff; box-shadow: 0 0 0 2px rgba(24,144,255,0.1); }
+        .login-btn {
+            width: 100%; padding: 14px; background: #1890ff; color: white; border: none;
+            border-radius: 8px; font-size: 15px; font-weight: 600; cursor: pointer;
+            transition: background 0.2s; margin-top: 8px;
+        }
+        .login-btn:hover { background: #40a9ff; }
+        .login-btn:disabled { background: #d9d9d9; cursor: not-allowed; }
+        .login-error {
+            background: #fff2f0; border: 1px solid #ffccc7; border-radius: 8px;
+            padding: 10px 16px; margin-bottom: 16px; color: #ff4d4f; font-size: 13px;
+        }
+        .login-hint {
+            text-align: center; margin-top: 20px; font-size: 12px; color: #999;
+            line-height: 1.8;
+        }
+        .login-hint code {
+            background: #f5f5f5; padding: 2px 6px; border-radius: 4px;
+            font-family: monospace; color: #d4380d;
+        }
+
         /* ===== Sidebar ===== */
         .sidebar {
             width: 300px; background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%);
@@ -38,6 +76,30 @@
         }
         .section-title .arrow { transition: transform 0.2s; font-size: 10px; }
         .section-title .arrow.collapsed { transform: rotate(-90deg); }
+
+        /* User info in sidebar */
+        .user-info {
+            padding: 12px 16px; background: rgba(255,255,255,0.05);
+            border-radius: 8px; margin-bottom: 16px; display: flex;
+            align-items: center; justify-content: space-between;
+        }
+        .user-info .user-detail { display: flex; align-items: center; gap: 10px; }
+        .user-info .avatar-sm {
+            width: 32px; height: 32px; background: #1890ff; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center; font-size: 14px;
+        }
+        .user-info .username { font-size: 13px; font-weight: 500; }
+        .user-info .role-tag {
+            padding: 2px 8px; border-radius: 10px; font-size: 10px;
+        }
+        .role-admin { background: rgba(255,77,79,0.15); color: #ff7875; border: 1px solid rgba(255,77,79,0.3); }
+        .role-merchant { background: rgba(100,255,218,0.15); color: #64ffda; border: 1px solid rgba(100,255,218,0.3); }
+        .logout-btn {
+            background: none; border: 1px solid rgba(255,255,255,0.2); color: #aaa;
+            padding: 4px 10px; border-radius: 6px; font-size: 11px; cursor: pointer;
+            transition: all 0.2s;
+        }
+        .logout-btn:hover { border-color: #ff4d4f; color: #ff4d4f; }
 
         /* Preset questions */
         .preset-category { margin-bottom: 8px; }
@@ -67,6 +129,20 @@
         .history-item .meta { font-size: 10px; color: #5a6a8a; margin-top: 3px; display: flex; gap: 8px; }
         .history-item .meta .cached-tag { color: #64ffda; }
         .history-empty { font-size: 12px; color: #5a6a8a; padding: 8px 0; text-align: center; }
+
+        /* User management section (admin only) */
+        .admin-section { margin-top: 16px; }
+        .user-list-item {
+            padding: 8px 10px; margin-bottom: 4px; background: rgba(255,255,255,0.03);
+            border-radius: 6px; display: flex; align-items: center; justify-content: space-between;
+        }
+        .user-list-item .u-name { font-size: 12px; color: #ccd6f6; }
+        .user-list-item .u-role { font-size: 10px; padding: 1px 6px; border-radius: 8px; }
+        .user-list-item .del-btn {
+            background: none; border: none; color: #ff4d4f; cursor: pointer;
+            font-size: 11px; opacity: 0.6; transition: opacity 0.2s;
+        }
+        .user-list-item .del-btn:hover { opacity: 1; }
 
         /* ===== Main Area ===== */
         .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
@@ -214,7 +290,35 @@
 </head>
 <body>
 <div id="app">
-    <div class="app-container">
+    <!-- ===== 登录页面 ===== -->
+    <div v-if="!isLoggedIn" class="login-page">
+        <div class="login-card">
+            <h1>🛒 电商智能问答系统</h1>
+            <div class="subtitle">请登录以继续使用</div>
+
+            <div v-if="loginError" class="login-error">{{ loginError }}</div>
+
+            <div class="form-group">
+                <label>用户名</label>
+                <input v-model="loginForm.username" @keyup.enter="doLogin" placeholder="请输入用户名" />
+            </div>
+            <div class="form-group">
+                <label>密码</label>
+                <input v-model="loginForm.password" @keyup.enter="doLogin" type="password" placeholder="请输入密码" />
+            </div>
+            <button class="login-btn" @click="doLogin" :disabled="loginLoading">
+                {{ loginLoading ? '登录中...' : '登 录' }}
+            </button>
+
+            <div class="login-hint">
+                默认管理员: <code>admin / admin123</code><br>
+                默认商家: <code>merchant / merchant123</code>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== 主应用 ===== -->
+    <div v-else class="app-container">
         <!-- Sidebar -->
         <div class="sidebar">
             <div class="sidebar-header">
@@ -231,6 +335,20 @@
             </div>
 
             <div class="sidebar-body">
+                <!-- User Info -->
+                <div class="user-info">
+                    <div class="user-detail">
+                        <div class="avatar-sm">{{ currentUser.username ? currentUser.username[0].toUpperCase() : '?' }}</div>
+                        <div>
+                            <div class="username">{{ currentUser.username }}</div>
+                            <span class="role-tag" :class="currentUser.role === 'admin' ? 'role-admin' : 'role-merchant'">
+                                {{ currentUser.role === 'admin' ? '管理员' : '商家' }}
+                            </span>
+                        </div>
+                    </div>
+                    <button class="logout-btn" @click="doLogout">退出</button>
+                </div>
+
                 <!-- Preset Questions -->
                 <div class="section-title" @click="showPresets = !showPresets">
                     <span>📋 预设问题</span>
@@ -261,6 +379,25 @@
                             <span>{{ formatTime(item.created_at) }}</span>
                             <span>{{ item.time_cost }}</span>
                             <span v-if="item.cached" class="cached-tag">缓存</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- User Management (admin only) -->
+                <div v-if="currentUser.role === 'admin'" class="admin-section">
+                    <div class="section-title" @click="showUsers = !showUsers">
+                        <span>👥 用户管理</span>
+                        <span class="arrow" :class="{ collapsed: !showUsers }">▼</span>
+                    </div>
+                    <div v-show="showUsers">
+                        <div v-for="u in users" :key="u.id" class="user-list-item">
+                            <div>
+                                <div class="u-name">{{ u.username }}</div>
+                                <span class="u-role" :class="u.role === 'admin' ? 'role-admin' : 'role-merchant'">
+                                    {{ u.role === 'admin' ? '管理员' : '商家' }}
+                                </span>
+                            </div>
+                            <button v-if="u.username !== currentUser.username" class="del-btn" @click="deleteUser(u.id)">删除</button>
                         </div>
                     </div>
                 </div>
@@ -379,10 +516,10 @@
 
                                 <!-- Downloads -->
                                 <div class="download-btns">
-                                    <a v-if="msg.result.pdf_path" class="dl-btn" :href="'http://localhost:35052/download?path=' + encodeURIComponent(msg.result.pdf_path)" target="_blank">
+                                    <a v-if="msg.result.pdf_path" class="dl-btn" :href="API_BASE + '/download?path=' + encodeURIComponent(msg.result.pdf_path)" target="_blank">
                                         📄 下载 PDF
                                     </a>
-                                    <a v-if="msg.result.html_path" class="dl-btn" :href="'http://localhost:35052/download?path=' + encodeURIComponent(msg.result.html_path)" target="_blank">
+                                    <a v-if="msg.result.html_path" class="dl-btn" :href="API_BASE + '/download?path=' + encodeURIComponent(msg.result.html_path)" target="_blank">
                                         🌐 下载 HTML
                                     </a>
                                 </div>
@@ -417,10 +554,81 @@
 </div>
 
 <script>
-const { createApp, ref, nextTick, onMounted } = Vue;
+const { createApp, ref, nextTick, onMounted, computed } = Vue;
 
 createApp({
     setup() {
+        // ===== Auth State =====
+        const token = ref(localStorage.getItem('token') || '');
+        const currentUser = ref(JSON.parse(localStorage.getItem('user') || '{}'));
+        const isLoggedIn = computed(() => !!token.value);
+
+        const loginForm = ref({ username: '', password: '' });
+        const loginLoading = ref(false);
+        const loginError = ref('');
+
+        const API_BASE = 'http://localhost:35052';
+
+        // ===== Auth Methods =====
+        async function doLogin() {
+            const { username, password } = loginForm.value;
+            if (!username || !password) {
+                loginError.value = '请输入用户名和密码';
+                return;
+            }
+            loginLoading.value = true;
+            loginError.value = '';
+            try {
+                const resp = await fetch(`${API_BASE}/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password }),
+                });
+                const data = await resp.json();
+                if (!resp.ok) {
+                    loginError.value = data.detail || '登录失败';
+                    return;
+                }
+                token.value = data.token;
+                currentUser.value = data.user;
+                localStorage.setItem('token', data.token);
+                localStorage.setItem('user', JSON.stringify(data.user));
+                // Load data after login
+                fetchPresets();
+                fetchHistory();
+                if (data.user.role === 'admin') fetchUsers();
+            } catch (e) {
+                loginError.value = '网络错误，请检查后端是否运行';
+            } finally {
+                loginLoading.value = false;
+            }
+        }
+
+        function doLogout() {
+            token.value = '';
+            currentUser.value = {};
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            messages.value = [];
+            conversation.value = [];
+        }
+
+        // ===== Authenticated Fetch Helper =====
+        async function authFetch(url, options = {}) {
+            const headers = options.headers || {};
+            if (token.value) {
+                headers['Authorization'] = `Bearer ${token.value}`;
+            }
+            const resp = await fetch(url, { ...options, headers });
+            if (resp.status === 401) {
+                doLogout();
+                loginError.value = '登录已过期，请重新登录';
+                throw new Error('Unauthorized');
+            }
+            return resp;
+        }
+
+        // ===== Main App State =====
         const input = ref('');
         const loading = ref(false);
         const messages = ref([]);
@@ -428,11 +636,11 @@ createApp({
         const conversation = ref([]);
         const history = ref([]);
         const presets = ref({});
+        const users = ref([]);
         const showPresets = ref(true);
         const showHistory = ref(true);
+        const showUsers = ref(false);
         const cacheSize = ref(0);
-
-        const API_BASE = 'http://localhost:35052';
 
         const quickExamples = [
             { icon: '📊', text: '统计各行为类型的数量分布' },
@@ -469,7 +677,7 @@ createApp({
 
         async function fetchHistory() {
             try {
-                const resp = await fetch(`${API_BASE}/history?limit=20`);
+                const resp = await authFetch(`${API_BASE}/history?limit=20`);
                 const data = await resp.json();
                 history.value = data.history || [];
             } catch (e) {
@@ -479,11 +687,36 @@ createApp({
 
         async function fetchPresets() {
             try {
-                const resp = await fetch(`${API_BASE}/presets`);
+                const resp = await authFetch(`${API_BASE}/presets`);
                 const data = await resp.json();
                 presets.value = data.presets || {};
             } catch (e) {
                 console.error('Failed to fetch presets:', e);
+            }
+        }
+
+        async function fetchUsers() {
+            try {
+                const resp = await authFetch(`${API_BASE}/auth/users`);
+                const data = await resp.json();
+                users.value = data.users || [];
+            } catch (e) {
+                console.error('Failed to fetch users:', e);
+            }
+        }
+
+        async function deleteUser(userId) {
+            if (!confirm('确定要删除该用户吗？')) return;
+            try {
+                const resp = await authFetch(`${API_BASE}/auth/users/${userId}`, { method: 'DELETE' });
+                const data = await resp.json();
+                if (resp.ok) {
+                    fetchUsers();
+                } else {
+                    alert(data.detail || '删除失败');
+                }
+            } catch (e) {
+                alert('删除失败');
             }
         }
 
@@ -494,7 +727,6 @@ createApp({
             loading.value = true;
             input.value = '';
 
-            // Track conversation context length
             const ctxLen = conversation.value.length;
             messages.value.push({ type: 'user', text: q, contextLen: ctxLen });
 
@@ -512,7 +744,7 @@ createApp({
                 formData.append('user_question', q);
                 formData.append('context', JSON.stringify(conversation.value.slice(-3)));
 
-                const resp = await fetch(`${API_BASE}/query`, {
+                const resp = await authFetch(`${API_BASE}/query`, {
                     method: 'POST',
                     body: formData,
                 });
@@ -522,21 +754,17 @@ createApp({
                     sysMsg.error = data.error;
                 } else {
                     sysMsg.result = data;
-                    // Add to conversation context
                     conversation.value.push({
                         question: q,
                         sql: data.sql,
                         result: data.result,
                     });
-                    // Keep only last 5 turns
                     if (conversation.value.length > 5) {
                         conversation.value = conversation.value.slice(-5);
                     }
-                    // Update cache size indicator
                     cacheSize.value += data.cached ? 0 : 1;
                 }
 
-                // Refresh history
                 fetchHistory();
             } catch (e) {
                 sysMsg.error = `请求失败：${e.message}`;
@@ -549,17 +777,24 @@ createApp({
         }
 
         onMounted(() => {
-            fetchPresets();
-            fetchHistory();
+            if (isLoggedIn.value) {
+                fetchPresets();
+                fetchHistory();
+                if (currentUser.value.role === 'admin') fetchUsers();
+            }
         });
 
         return {
+            // Auth
+            isLoggedIn, currentUser, loginForm, loginLoading, loginError,
+            doLogin, doLogout, API_BASE,
+            // Main
             input, loading, messages, chatArea,
-            conversation, history, presets,
-            showPresets, showHistory,
+            conversation, history, presets, users,
+            showPresets, showHistory, showUsers,
             quickExamples, cacheSize,
             getColumns, useExample, sendQuery,
-            formatTime, clearChat,
+            formatTime, clearChat, deleteUser,
         };
     }
 }).mount('#app');
