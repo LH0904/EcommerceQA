@@ -2,6 +2,7 @@ import os
 import json
 import hashlib
 from datetime import datetime
+from contextlib import asynccontextmanager
 import fastapi
 from fastapi.params import Form
 from fastapi import Response, Depends
@@ -37,7 +38,16 @@ def load_env():
 
 load_env()
 
-app = fastapi.FastAPI()
+
+@asynccontextmanager
+async def lifespan(app):
+    """应用启动/关闭生命周期管理"""
+    create_history_table()
+    init_users_table()
+    logging.info("Database tables initialized")
+    yield
+
+app = fastapi.FastAPI(lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -261,13 +271,6 @@ async def generate_pdf_async(file_path):
 
 
 # ==================== API 端点 ====================
-
-@app.on_event("startup")
-async def startup_event():
-    """Initialize database tables on startup"""
-    create_history_table()
-    init_users_table()
-    logging.info("Database tables initialized")
 
 
 # ==================== 鉴权 API ====================
