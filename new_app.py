@@ -4,7 +4,7 @@ import hashlib
 from datetime import datetime
 import fastapi
 from fastapi.params import Form
-from fastapi import Response
+from fastapi import Response, Depends
 from playwright.async_api import async_playwright
 from nl2sql.mysqlQuery import my_sql, my_sql_exec
 from fastapi.responses import FileResponse
@@ -13,8 +13,13 @@ import logging
 import uvicorn
 from nl2sql.vec import VectorDBManager
 from openai import OpenAI
+from pydantic import BaseModel
 
 from fastapi.middleware.cors import CORSMiddleware
+from auth import (
+    init_users_table, create_token, find_user_by_username,
+    hash_password, verify_password, get_current_user, require_admin,
+)
 
 # ==================== 配置 ====================
 
@@ -261,7 +266,96 @@ async def generate_pdf_async(file_path):
 async def startup_event():
     """Initialize database tables on startup"""
     create_history_table()
-    logging.info("History table initialized")
+    init_users_table()
+    logging.info("Database tables initialized")
+
+
+# ==================== 鉴权 API ====================
+
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+
+
+class RegisterRequest(BaseModel):
+    username: str
+    password: str
+    role: str = "merchant"  # 默认为商家角色
+
+
+@app.post("/auth/login")
+async def login(req: LoginRequest):
+    """用户登录，返回 JWT token"""
+    user = find_user_by_username(req.username)
+    if not user or not verify_password(req.password, user['password_hash']):
+        raise fastapi.HTTPException(status_code=401, detail="用户名或密码错误")
+
+    token = create_token(user['username'], user['role'])
+    return {
+        "token": token,
+        "user": {
+            "id": user['id'],
+            "username": user['username'],
+            "role": user['role'],
+        }
+    }
+
+
+@app.post("/auth/register")
+async def register(req: RegisterRequest):
+    """用户注册（仅管理员可创建新用户）"""
+    # 检查用户名是否已存在
+    if find_user_by_username(req.username):
+        raise fastapi.HTTPException(status_code=400, detail="用户名已存在")
+
+    # 验证角色
+    if req.role not in ('admin', 'merchant'):
+        raise fastapi.HTTPException(status_code=400, detail="角色必须是 admin 或 merchant")
+
+    # 插入新用户
+    try:
+        from auth import get_db
+        conn = get_db()
+        cursor = conn.cursor()
+        hashed = hash_password(req.password)
+        cursor.execute(
+            "INSERT INTO users (username, password_hash, role) VALUES (%s, %s, %s)",
+            (req.username, hashed, req.role)
+        )
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return {"message": f"用户 {req.username} 创建成功", "role": req.role}
+    except Exception as e:
+        logging.error(f"注册失败: {e}")
+        raise fastapi.HTTPException(status_code=500, detail="注册失败")
+
+
+@app.get("/auth/me")
+async def get_me(current_user: dict = Depends(get_current_user)):
+    """获取当前登录用户信息"""
+    return {"user": current_user}
+
+
+@app.get("/auth/users")
+async def list_users(current_user: dict = Depends(require_admin)):
+    """获取所有用户列表（仅管理员）"""
+    try:
+        from auth import get_db
+        conn = get_db()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("SELECT id, username, role, created_at FROM users ORDER BY id")
+        users = cursor.fetchall()
+        cursor.close()
+        conn.close()
+        # 转换 datetime
+        for u in users:
+            if u.get('created_at'):
+                u['created_at'] = u['created_at'].isoformat()
+        return {"users": users}
+    except Exception as e:
+        logging.error(f"查询用户列表失败: {e}")
+        return {"users": []}
 
 
 @app.get("/presets")
