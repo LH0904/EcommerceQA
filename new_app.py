@@ -358,6 +358,40 @@ async def list_users(current_user: dict = Depends(require_admin)):
         return {"users": []}
 
 
+@app.delete("/auth/users/{user_id}")
+async def delete_user(user_id: int, current_user: dict = Depends(require_admin)):
+    """删除用户（仅管理员，不能删除自己）"""
+    try:
+        from auth import get_db
+        conn = get_db()
+        cursor = conn.cursor(dictionary=True)
+
+        # 查询目标用户
+        cursor.execute("SELECT id, username, role FROM users WHERE id = %s", (user_id,))
+        target = cursor.fetchone()
+        if not target:
+            cursor.close()
+            conn.close()
+            raise fastapi.HTTPException(status_code=404, detail="用户不存在")
+
+        # 不能删除自己
+        if target['username'] == current_user['username']:
+            cursor.close()
+            conn.close()
+            raise fastapi.HTTPException(status_code=400, detail="不能删除自己")
+
+        cursor.execute("DELETE FROM users WHERE id = %s", (user_id,))
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return {"message": f"用户 {target['username']} 已删除"}
+    except fastapi.HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"删除用户失败: {e}")
+        raise fastapi.HTTPException(status_code=500, detail="删除用户失败")
+
+
 @app.get("/presets")
 async def get_presets():
     """Return preset question templates"""
