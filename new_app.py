@@ -599,7 +599,8 @@ async def health():
 async def download_file(path: str, current_user: dict = Depends(get_current_user)):
     """Download a generated file"""
     if os.path.exists(path):
-        return FileResponse(path)
+        filename = os.path.basename(path)
+        return FileResponse(path, filename=filename,media_type="application/octet-stream")
     return {"error": "File not found"}
 
 

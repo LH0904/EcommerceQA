@@ -516,12 +516,12 @@
 
                                 <!-- Downloads -->
                                 <div class="download-btns">
-                                    <a v-if="msg.result.pdf_path" class="dl-btn" :href="API_BASE + '/download?path=' + encodeURIComponent(msg.result.pdf_path)" target="_blank">
+                                    <button v-if="msg.result.pdf_path" class="dl-btn" @click="downloadFile(msg.result.pdf_path,'pdf')">
                                         📄 下载 PDF
-                                    </a>
-                                    <a v-if="msg.result.html_path" class="dl-btn" :href="API_BASE + '/download?path=' + encodeURIComponent(msg.result.html_path)" target="_blank">
+                                    </button>
+                                    <button v-if="msg.result.html_path" class="dl-btn" @click="downloadFile(msg.result.html_path,'html')">
                                         🌐 下载 HTML
-                                    </a>
+                                    </button>
                                 </div>
                             </div>
 
@@ -784,6 +784,31 @@ createApp({
             }
         });
 
+        // 下载文件（带认证）
+        async function downloadFile(filePath, type) {
+            try {
+                const resp = await authFetch(`${API_BASE}/download?path=${encodeURIComponent(filePath)}`);
+                if (!resp.ok) {
+                    alert('下载失败，请重试');
+                    return;
+                }
+                const blob = await resp.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                // 从路径中提取文件名
+                const filename = filePath.split(/[/\\]/).pop() || `download.${type}`;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+            } catch (e) {
+                console.error('下载失败:', e);
+                alert('下载失败，请检查网络或重新登录');
+            }
+        }
+
         return {
             // Auth
             isLoggedIn, currentUser, loginForm, loginLoading, loginError,
@@ -794,7 +819,7 @@ createApp({
             showPresets, showHistory, showUsers,
             quickExamples, cacheSize,
             getColumns, useExample, sendQuery,
-            formatTime, clearChat, deleteUser,
+            formatTime, clearChat, deleteUser, downloadFile,
         };
     }
 }).mount('#app');
