@@ -47,12 +47,12 @@ async def login(req: LoginRequest):
 
 @router.post("/register")
 async def register(req: RegisterRequest):
-    """用户注册"""
+    """商家注册（公开接口，仅允许 merchant 角色）"""
     if find_user_by_username(req.username):
         raise fastapi.HTTPException(status_code=400, detail="用户名已存在")
 
-    if req.role not in ("admin", "merchant"):
-        raise fastapi.HTTPException(status_code=400, detail="角色必须是 admin 或 merchant")
+    if req.role != "merchant":
+        raise fastapi.HTTPException(status_code=400, detail="公开注册仅支持商家(merchant)角色")
 
     try:
         hashed = hash_password(req.password)

@@ -36,6 +36,13 @@
         }
         .login-btn:hover { background: #40a9ff; }
         .login-btn:disabled { background: #d9d9d9; cursor: not-allowed; }
+        .login-switch {
+            text-align: center; margin-top: 16px; font-size: 13px; color: #888;
+        }
+        .login-switch a {
+            color: #1890ff; text-decoration: none; font-weight: 500;
+        }
+        .login-switch a:hover { text-decoration: underline; }
         .login-error {
             background: #fff2f0; border: 1px solid #ffccc7; border-radius: 8px;
             padding: 10px 16px; margin-bottom: 16px; color: #ff4d4f; font-size: 13px;
@@ -290,25 +297,41 @@
 </head>
 <body>
 <div id="app">
-    <!-- ===== 登录页面 ===== -->
+    <!-- ===== 登录 / 注册页面 ===== -->
     <div v-if="!isLoggedIn" class="login-page">
         <div class="login-card">
             <h1>🛒 电商智能问答系统</h1>
-            <div class="subtitle">请登录以继续使用</div>
+            <div class="subtitle">{{ isRegisterMode ? '注册商家账号' : '请登录以继续使用' }}</div>
 
             <div v-if="loginError" class="login-error">{{ loginError }}</div>
 
             <div class="form-group">
                 <label>用户名</label>
-                <input v-model="loginForm.username" @keyup.enter="doLogin" placeholder="请输入用户名" />
+                <input v-model="loginForm.username" @keyup.enter="isRegisterMode ? null : doLogin()" placeholder="请输入用户名" />
             </div>
             <div class="form-group">
                 <label>密码</label>
-                <input v-model="loginForm.password" @keyup.enter="doLogin" type="password" placeholder="请输入密码" />
+                <input v-model="loginForm.password" @keyup.enter="isRegisterMode ? null : doLogin()" type="password" :placeholder="isRegisterMode ? '设置密码（至少6位）' : '请输入密码'" />
             </div>
-            <button class="login-btn" @click="doLogin" :disabled="loginLoading">
-                {{ loginLoading ? '登录中...' : '登 录' }}
+
+            <!-- 注册模式：确认密码 -->
+            <div v-if="isRegisterMode" class="form-group">
+                <label>确认密码</label>
+                <input v-model="loginForm.confirmPassword" @keyup.enter="doRegister" type="password" placeholder="再次输入密码" />
+            </div>
+
+            <button class="login-btn" @click="isRegisterMode ? doRegister() : doLogin()" :disabled="loginLoading">
+                {{ loginLoading ? (isRegisterMode ? '注册中...' : '登录中...') : (isRegisterMode ? '注 册' : '登 录') }}
             </button>
+
+            <div class="login-switch">
+                <span v-if="!isRegisterMode">
+                    还没有账号？<a href="#" @click.prevent="isRegisterMode = true; loginError = ''">注册商家账号</a>
+                </span>
+                <span v-else>
+                    已有账号？<a href="#" @click.prevent="isRegisterMode = false; loginError = ''">返回登录</a>
+                </span>
+            </div>
 
             <div class="login-hint">
                 默认管理员: <code>admin / admin123</code><br>
@@ -563,9 +586,10 @@ createApp({
         const currentUser = ref(JSON.parse(localStorage.getItem('user') || '{}'));
         const isLoggedIn = computed(() => !!token.value);
 
-        const loginForm = ref({ username: '', password: '' });
+        const loginForm = ref({ username: '', password: '', confirmPassword: '' });
         const loginLoading = ref(false);
         const loginError = ref('');
+        const isRegisterMode = ref(false);
 
         const API_BASE = 'http://localhost:35052';
 
@@ -611,6 +635,50 @@ createApp({
             localStorage.removeItem('user');
             messages.value = [];
             conversation.value = [];
+        }
+
+        async function doRegister() {
+            const { username, password, confirmPassword } = loginForm.value;
+            if (!username || !password) {
+                loginError.value = '请填写用户名和密码';
+                return;
+            }
+            if (password.length < 6) {
+                loginError.value = '密码长度至少6位';
+                return;
+            }
+            if (password !== confirmPassword) {
+                loginError.value = '两次输入的密码不一致';
+                return;
+            }
+            loginLoading.value = true;
+            loginError.value = '';
+            try {
+                const resp = await fetch(`${API_BASE}/auth/register`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password, role: 'merchant' }),
+                });
+                const data = await resp.json();
+                if (!resp.ok) {
+                    loginError.value = data.detail || '注册失败';
+                    return;
+                }
+                // 注册成功，自动切换到登录模式
+                loginError.value = '';
+                isRegisterMode.value = false;
+                loginForm.value = { username: '', password: '', confirmPassword: '' };
+                loginError.value = '注册成功，请登录';
+                // 把成功提示改成绿色样式
+                setTimeout(() => {
+                    const el = document.querySelector('.login-error');
+                    if (el) el.style.cssText = 'background:#f6ffed;border-color:#b7eb8f;color:#52c41a';
+                }, 0);
+            } catch (e) {
+                loginError.value = '网络错误，请检查后端是否运行';
+            } finally {
+                loginLoading.value = false;
+            }
         }
 
         // ===== Authenticated Fetch Helper =====
@@ -812,7 +880,7 @@ createApp({
         return {
             // Auth
             isLoggedIn, currentUser, loginForm, loginLoading, loginError,
-            doLogin, doLogout, API_BASE,
+            isRegisterMode, doLogin, doRegister, doLogout, API_BASE,
             // Main
             input, loading, messages, chatArea,
             conversation, history, presets, users,

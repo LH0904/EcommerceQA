@@ -16,7 +16,6 @@ def get_connection():
         host=settings.DB_HOST,
         port=settings.DB_PORT,
         database=settings.DB_NAME,
-        raise_on_warnings=True,
     )
 
 
