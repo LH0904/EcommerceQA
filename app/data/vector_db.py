@@ -19,9 +19,12 @@ class VectorDBManager:
 
     def __init__(self, persist_directory=None):
         if persist_directory is None:
-            # 默认路径: nl2sql/chroma_db
+            # 默认路径: nl2sql/chroma_db (项目根目录下)
+            project_root = os.path.dirname(
+                os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            )
             persist_directory = os.path.join(
-                os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                project_root,
                 "nl2sql",
                 "chroma_db",
             )
